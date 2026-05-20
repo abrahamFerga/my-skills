@@ -1,0 +1,65 @@
+{
+  "ignores": [
+    "node_modules/**"
+  ],
+  "config": {
+    "default": true,
+
+    // Skill files commonly have long descriptions, tables, and code blocks
+    "MD013": false,
+
+    // Reference files use ### without preceding ## inside collapsible sections
+    "MD001": false,
+
+    // Skills use varied indentation depths
+    "MD007": false,
+
+    // $ prompts are conventional in command examples
+    "MD014": false,
+
+    // Skill files use tight heading-to-content spacing
+    "MD022": false,
+
+    // Sibling sections may reuse the same heading (e.g., "Common pitfalls")
+    "MD024": { "siblings_only": true },
+
+    // Headings can end with ? or : in skill prose
+    "MD026": false,
+
+    // Spaced blockquotes for callouts
+    "MD028": false,
+
+    // Skill files renumber lists incrementally
+    "MD029": false,
+
+    // Code blocks live tight against surrounding text
+    "MD031": false,
+
+    // Reference files use tight list formatting
+    "MD032": false,
+
+    // Allow common inline HTML elements
+    "MD033": { "allowed_elements": ["br", "details", "summary", "img", "a", "sub", "sup"] },
+
+    // Bare URLs appear in references / external links
+    "MD034": false,
+
+    // Bold labels used as sub-headings
+    "MD036": false,
+
+    // Some code blocks are generic output / pseudo-code
+    "MD040": false,
+
+    // SKILL.md starts with YAML frontmatter, not an h1
+    "MD041": false,
+
+    // Tables sometimes vary column spans intentionally
+    "MD056": false,
+
+    // Tables don't always need blank lines around them in tight skill prose
+    "MD058": false,
+
+    // Pipe tables aren't always aligned (kept readable on narrow screens)
+    "MD060": false
+  }
+}
