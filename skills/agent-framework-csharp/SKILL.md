@@ -1,28 +1,16 @@
 ---
 name: agent-framework-csharp
 description: >
-  Build .NET applications with Microsoft Agent Framework (MAF) — the
-  `Microsoft.Agents.AI` package family for agentic workflows on top of
-  `Microsoft.Extensions.AI` (MEAI). Covers the full surface: creating an
-  `AIAgent` from any `IChatClient` provider (Azure OpenAI, OpenAI, Foundry,
-  Ollama, Anthropic), function tools, MCP client tools, agent skills
-  (file/code/class-defined), threads and persisted sessions, streaming,
-  structured output, middleware, memory providers (custom, Foundry, Cosmos
-  chat history), workflows (sequential / concurrent / handoff / group chat /
-  HITL / conditional edges / checkpoints / shared state), declarative
-  workflows (YAML), A2A and AGUI protocols, DI hosting, durable agents,
-  and OpenTelemetry.
-  USE FOR: scaffolding a new MAF app; adding tools, skills, sessions,
-  memory, or workflows to an existing agent; wiring MCP servers as agent
-  tools; multi-agent orchestration; exposing/consuming agents over A2A
-  or AGUI; registering agents in DI; Azure Functions / durable agent
-  hosting; enabling OpenTelemetry on agents and workflows; declarative
-  YAML workflows.
-  DO NOT USE FOR: pure single-prompt LLM calls with no tool calling
-  (use MEAI `IChatClient` directly); classification on tabular data
-  (use ML.NET); Semantic Kernel projects (MAF supersedes SK); creating
-  MCP *servers* (use the `ModelContextProtocol` server SDK directly);
-  Python Agent Framework (this skill is .NET-only).
+  Build .NET agentic apps with Microsoft Agent Framework (MAF, the
+  `Microsoft.Agents.AI` family on top of MEAI `IChatClient`). Use when the
+  task involves tools/function calling, MCP client tools, agent skills,
+  persisted sessions, memory, middleware, or multi-agent workflows
+  (sequential/concurrent/handoff/group-chat/HITL), plus A2A/AGUI hosting,
+  DI, durable agents, and OpenTelemetry. Triggers: MAF, `AIAgent`,
+  `ChatClientAgent`, agent + tools, multi-agent orchestration.
+  DO NOT USE FOR a single prompt-response with no tools (use MEAI
+  `IChatClient` directly) or authoring MCP *servers* (use the
+  `ModelContextProtocol` server SDK).
 license: MIT
 ---
 
@@ -31,6 +19,14 @@ license: MIT
 Build production-quality agentic .NET apps using **Microsoft Agent Framework** (`Microsoft.Agents.AI`). MAF sits on top of **Microsoft.Extensions.AI** (`IChatClient`) and adds: agent abstractions (`AIAgent`, `ChatClientAgent`), sessions, tool dispatch via `FunctionInvokingChatClient`, **agent skills** (the file/code/class-based packaging unit), middleware pipelines, multi-agent workflows, declarative YAML, A2A & AGUI hosting, DI hosting, durable agents, and OpenTelemetry.
 
 Use it whenever the scenario involves **tools, multi-step reasoning, or multi-agent collaboration** — hand-rolled tool loops with raw `IChatClient` are an anti-pattern.
+
+## Scope
+
+Covers the full MAF surface: creating an `AIAgent` from any `IChatClient` provider (Azure OpenAI, OpenAI, Foundry, Ollama, Anthropic), function tools, MCP client tools, agent skills (file/code/class-defined), threads and persisted sessions, streaming, structured output, middleware, memory providers (custom, Foundry, Cosmos chat history), workflows (sequential / concurrent / handoff / group chat / HITL / conditional edges / checkpoints / shared state), declarative workflows (YAML), A2A and AGUI protocols, DI hosting, durable agents, and OpenTelemetry.
+
+USE FOR: scaffolding a new MAF app; adding tools, skills, sessions, memory, or workflows to an existing agent; wiring MCP servers as agent tools; multi-agent orchestration; exposing/consuming agents over A2A or AGUI; registering agents in DI; Azure Functions / durable agent hosting; enabling OpenTelemetry on agents and workflows; declarative YAML workflows.
+
+DO NOT USE FOR: pure single-prompt LLM calls with no tool calling (use MEAI `IChatClient` directly); classification on tabular data (use ML.NET); Semantic Kernel projects (MAF supersedes SK); creating MCP *servers* (use the `ModelContextProtocol` server SDK directly); Python Agent Framework (this skill is .NET-only).
 
 ## When to Use
 

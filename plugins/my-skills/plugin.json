@@ -1,6 +1,0 @@
-{
-  "name": "my-skills",
-  "version": "0.1.0",
-  "description": "Personal collection of Claude Code skills. Currently includes: agent-framework-csharp (Microsoft Agent Framework for .NET).",
-  "skills": ["./skills/"]
-}

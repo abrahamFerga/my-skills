@@ -1,0 +1,53 @@
+<Project>
+
+  <!--
+    Directory.Packages.props -- Central Package Management (CPM).
+    With ManagePackageVersionsCentrally=true, project .csproj files reference
+    packages WITHOUT a Version attribute:
+
+        <PackageReference Include="Microsoft.EntityFrameworkCore" />
+
+    and the single source of truth for every version is the <PackageVersion>
+    entries below. This kills version drift across a multi-project solution.
+
+    Versions here are PLACEHOLDERS aligned to the .NET 10 / EF Core 10 baseline.
+    Run `dotnet list package --outdated` and pin exact versions you have tested.
+  -->
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="Aspire (see ../aspire skill)">
+    <!-- Pulls in ServiceDefaults + AppHost SDK pieces; pin to the 13.x train. -->
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="EF Core 10 (see ../entity-framework-core skill)">
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Azure identity + Key Vault (Managed Identity at runtime)">
+    <PackageVersion Include="Azure.Identity" Version="1.13.1" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.AzureKeyVault" Version="3.1.24" />
+    <PackageVersion Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.3.2" />
+  </ItemGroup>
+
+  <ItemGroup Label="Observability">
+    <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.3.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.10.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testing">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>
