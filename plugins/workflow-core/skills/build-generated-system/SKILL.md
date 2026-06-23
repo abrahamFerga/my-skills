@@ -20,6 +20,17 @@ each phase's skill in the right order, enforces the handoff artifact at every
 step, and stops when a phase needs a human decision. This is the answer to "how
 does the agent know what to run, and in what order."
 
+## Running hands-off (`/loop`)
+
+This skill is built to run under `/loop` (e.g. `/loop /workflow-core:build-generated-system the-lawyer legal`).
+Each pass: re-read the project state (which artifacts/issues already exist), resume at the
+first phase whose exit condition isn't met, advance **one phase** (or, in Phase 8, one feature
+via `/development:work-next-issue`), then yield so the loop can continue. Completed phases
+short-circuit, so re-entry is cheap and safe. Only block the loop for a genuine human decision
+(unanswered research questions, a guardrail conflict, an outward action awaiting confirmation) —
+state what you need and stop. The loop ends when Phase 9 passes (system green and verified) or
+the backlog is fully drained to Done.
+
 ## Inputs
 
 - **project_name** (required) — kebab-case, must start with `the-` (e.g. `the-lawyer`).
