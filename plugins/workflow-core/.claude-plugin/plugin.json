@@ -1,0 +1,8 @@
+{
+  "name": "workflow-core",
+  "version": "0.2.0",
+  "license": "MIT",
+  "category": "workflow",
+  "author": { "name": "Abraham Fernandez" },
+  "description": "Cross-cutting ops/meta + pipeline orchestrators: bootstrap & manage workflow.json + .claude/settings.json, create the project's GitHub repo + backlog board, declare external plugin marketplaces, validate config/secrets, and the end-to-end build / research-only conductors. Drives stage switching; keep enabled across stages."
+}

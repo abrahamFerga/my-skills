@@ -3,69 +3,23 @@
   "owner": {
     "name": "Abraham Fernandez"
   },
-  "description": "Stage-scoped plugins for agentic .NET development: workflow-core (ops/meta + pipeline orchestrators), system-definition (research/spec/plan), architecture (ARCH/C4/ADRs + .NET/Azure scaffolding), and development (Aspire/EF Core/Agent Framework references + build/verify). Enable per stage to keep skill context minimal.",
+  "description": "Stage-scoped plugins for agentic .NET development, managed through GitHub: workflow-core (ops/meta + repo/backlog setup + pipeline orchestrators), system-definition (research/spec/plan -> issue backlog), architecture (ARCH/C4/ADRs + .NET/Azure scaffolding from the backlog), and development (Aspire/EF Core/Agent Framework references + issue-driven build/verify). Enable per stage to keep skill context minimal.",
   "plugins": [
     {
       "name": "workflow-core",
-      "source": "./",
-      "strict": false,
-      "version": "0.2.0",
-      "license": "MIT",
-      "category": "workflow",
-      "description": "Cross-cutting ops/meta + pipeline orchestrators: bootstrap & manage workflow.json + .claude/settings.json, declare external plugin marketplaces, validate config/secrets, and the end-to-end build / research-only conductors. Drives stage switching; keep enabled across stages.",
-      "skills": [
-        "./skills/build-generated-system",
-        "./skills/research-only",
-        "./skills/init-system",
-        "./skills/manage-workflow",
-        "./skills/manage-skills",
-        "./skills/validate-system"
-      ]
+      "source": "./plugins/workflow-core"
     },
     {
       "name": "system-definition",
-      "source": "./",
-      "strict": false,
-      "version": "0.2.0",
-      "license": "MIT",
-      "category": "workflow",
-      "description": "Stage 1 — decide WHAT to build: industry research -> product spec (SPEC.md) -> plan + RBAC (PLAN.md). Enable at project kickoff; disable once the plan is frozen so its descriptions stop costing context.",
-      "skills": [
-        "./skills/research-industry",
-        "./skills/synthesize-spec",
-        "./skills/plan-system"
-      ]
+      "source": "./plugins/system-definition"
     },
     {
       "name": "architecture",
-      "source": "./",
-      "strict": false,
-      "version": "0.2.0",
-      "license": "MIT",
-      "category": "architecture",
-      "description": "Stage 2 — decide the SHAPE once: ARCH.md + C4 + ADRs (cloud-agnostic), plus the .NET/Azure solution skeleton + Terraform + GitHub Actions scaffolding. Enable to define the initial architecture, then disable for the long development phase.",
-      "skills": [
-        "./skills/design-architecture",
-        "./skills/dotnet-architecture"
-      ]
+      "source": "./plugins/architecture"
     },
     {
       "name": "development",
-      "source": "./",
-      "strict": false,
-      "version": "0.2.0",
-      "license": "MIT",
-      "category": "development",
-      "description": "Stage 3 — continuous .NET 10 development. Aspire, EF Core 10, and Microsoft Agent Framework references that Claude reaches for automatically while coding, plus the Aspire solution backbone, pluggable-connector pattern, build orchestrator, and runtime verify loop. The default coding-stage plugin.",
-      "skills": [
-        "./skills/agent-framework-csharp",
-        "./skills/aspire",
-        "./skills/entity-framework-core",
-        "./skills/dotnet-aspire-base",
-        "./skills/pluggable-connectors",
-        "./skills/build-system",
-        "./skills/verify-runtime"
-      ]
+      "source": "./plugins/development"
     }
   ]
 }

@@ -7,19 +7,22 @@ existing skills.
 
 ## Where a skill lives
 
+A skill lives **under its owning plugin**:
+
 ```text
-skills/<kebab-name>/
+plugins/<plugin>/skills/<kebab-name>/
 ├── SKILL.md          # required — the entry point (body < ~450 lines)
 ├── references/       # optional — progressive-disclosure deep dives (one level deep)
 │   └── <topic>.md
 └── assets/           # optional — copy-ready template files (Terraform, YAML, project skeletons)
 ```
 
-All skills share one repo-root `skills/` tree. They're grouped into **stage
-plugins** by the `.claude-plugin/marketplace.json` catalog: four plugin entries
-all use `"source": "./"` + `"strict": false` + an explicit `"skills"` subset, so
-each plugin loads only its listed skills with no file moves and no per-plugin
-`plugin.json`. Stage plugins:
+Each plugin is a **self-contained directory** with its own
+`.claude-plugin/plugin.json` and `skills/` tree. The `.claude-plugin/marketplace.json`
+catalog has one entry per plugin whose `source` points at `./plugins/<plugin>`. A
+plugin auto-discovers every skill under its own `skills/` — there is **no `skills`
+array to maintain**, and because each plugin has a distinct source root, plugins never
+expose each other's skills. Stage plugins:
 
 | Plugin | Stage | Default |
 |--------|-------|---------|
@@ -27,6 +30,12 @@ each plugin loads only its listed skills with no file moves and no per-plugin
 | `system-definition` | stage 1 | off |
 | `architecture` | stage 2 | off |
 | `development` | stage 3 | on |
+
+**Cross-plugin links break on install.** Plugins are installed in isolation, so a
+relative path from one plugin to another (`../../<other-plugin>/...`) won't resolve at
+runtime. Reference a sibling in the **same** plugin by relative path
+(`../<name>/SKILL.md`); reference a skill in **another** plugin by slash command
+(`/<plugin>:<skill>`), never by file path.
 
 ## Naming
 
@@ -91,8 +100,9 @@ disable-model-invocation: true   # OPTIONAL — see "Invocation" below
 - Numbered steps for workflows, checklists for requirements, tables for matrices.
 - Cross-platform `dotnet` CLI; no hardcoded secrets in examples.
 - Pin current versions/package IDs (verify on the web — these ecosystems move fast).
-- Clickable relative links only (`references/x.md`, `../other-skill/SKILL.md`,
-  `assets/...`). Keep skill bodies tool-agnostic so they also work under Copilot.
+- Clickable relative links for same-plugin siblings (`references/x.md`,
+  `../other-skill/SKILL.md`, `assets/...`); slash commands (`/plugin:skill`) for
+  other-plugin skills. Keep skill bodies tool-agnostic so they also work under Copilot.
 - Don't copy upstream docs verbatim; record attribution in `NOTICES.md`.
 
 ## `assets/` (copy-ready templates)
@@ -102,15 +112,15 @@ parameterized template files under `assets/` and explain them in a `references/*
 
 ## Checklist — adding a new skill
 
-1. `mkdir skills/<name>/` (+ `references/`, `assets/` as needed).
+1. `mkdir plugins/<plugin>/skills/<name>/` (+ `references/`, `assets/` as needed),
+   under the plugin that owns the stage it belongs to.
 2. Write `SKILL.md` with valid frontmatter and the section order above. Decide
    auto vs manual invocation and set `disable-model-invocation` accordingly.
 3. Web-verify all versions/package IDs/API names before committing them to prose.
-4. Add the skill folder to the right plugin's `"skills"` array in
-   `.claude-plugin/marketplace.json` (or add a new stage-plugin entry). **This
-   step is required** — the plugins use explicit skill subsets, so a new folder is
-   not auto-discovered.
+4. No marketplace edit needed — the plugin auto-discovers the new `skills/<name>/`
+   folder. (Only adding a whole new *plugin* requires a `marketplace.json` entry
+   plus a `plugins/<plugin>/.claude-plugin/plugin.json`.)
 5. Add a row to the matching table in `README.md`.
 6. Add upstream attribution to `NOTICES.md` if you adapted anything.
-7. Lint: `npx markdownlint-cli2 "skills/<name>/**/*.md"`. Validate the marketplace
-   with `claude plugin validate .` if available.
+7. Lint: `npx markdownlint-cli2 "plugins/<plugin>/skills/<name>/**/*.md"`. Validate
+   the marketplace with `claude plugin validate .` if available.
