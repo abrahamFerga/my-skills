@@ -1,8 +1,7 @@
 {
   "name": "workflow-core",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "license": "MIT",
-  "category": "workflow",
   "author": { "name": "Abraham Fernandez" },
-  "description": "Cross-cutting ops/meta + pipeline orchestrators: bootstrap & manage workflow.json + .claude/settings.json, create the project's GitHub repo + backlog board, declare external plugin marketplaces, validate config/secrets, and the end-to-end build / research-only conductors. Drives stage switching; keep enabled across stages."
+  "description": "Always-on ops/meta + the autonomous build conductor: bootstrap & manage workflow.json + .claude/settings.json, create the GitHub repo + backlog board, declare marketplaces, validate config/secrets, set the run's /goal (objective + autonomy), and drive the parameterless end-to-end build. Ships the backlog-manager agent and the git-safety + auto-loop hooks. Keep enabled across stages."
 }

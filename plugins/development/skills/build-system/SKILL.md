@@ -109,7 +109,7 @@ they do, generate them directly rather than calling a skill that does not yet ex
 
 1. Invoke [`dotnet-aspire-base`](../dotnet-aspire-base/SKILL.md) to create the solution + base
    projects + ServiceDefaults wiring.
-2. Invoke `/architecture:dotnet-architecture` to lay out the domain /
+2. Follow `/architecture:dotnet-architecture` to lay out the domain /
    application / infrastructure layering the rest of the epic fills in.
 3. Apply the **RBAC pattern** to install the role/policy/claim infrastructure (a future `rbac`
    skill; generate it inline for now from the guardrails).
@@ -130,7 +130,7 @@ they do, generate them directly rather than calling a skill that does not yet ex
 11. Install the runtime verification surface via [`verify-runtime`](../verify-runtime/SKILL.md)
     (Aspire integration-test host, HTTP request catalog, agent-readable telemetry, Playwright E2E
     when there's a SPA).
-12. Run `dotnet build` and `dotnet test`. Run `/workflow-core:validate-system`.
+12. Run `dotnet build` and `dotnet test`, then follow `/workflow-core:validate-system`.
     Fix any failures before moving on.
 
 ### Per feature issue (every subsequent run)
@@ -145,7 +145,7 @@ Given one *Ready* `type:feature` issue (title, body, acceptance criteria, Stage-
    migrations + tests + UI screens — with every cross-cutting concern wired in. Don't pull in
    scope from other issues.
 4. Wire the feature into the dashboard navigation.
-5. Run `dotnet build` + `dotnet test` + `/workflow-core:validate-system`. Stop on red — the unit
+5. Run `dotnet build` + `dotnet test`, then follow `/workflow-core:validate-system`. Stop on red — the unit
    isn't done until green. (Confirm every acceptance criterion in the issue is met.)
 
 `work-next-issue` then opens the PR (`Closes #N`) and advances the board. The system should be

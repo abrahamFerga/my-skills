@@ -1,0 +1,60 @@
+{
+  "description": "Generated-system safety + autonomy: block irreversible outward git/gh actions, optionally self-continue an autonomy=auto run, and orient each session from workflow.json. Every hook no-ops silently when the cwd is not a generated the-* system.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git push *)",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/guard-outward.js"],
+            "timeout": 10,
+            "statusMessage": "Checking push safety…"
+          },
+          {
+            "type": "command",
+            "if": "Bash(gh pr merge *)",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/guard-outward.js"],
+            "timeout": 10,
+            "statusMessage": "Checking merge policy…"
+          },
+          {
+            "type": "command",
+            "if": "Bash(gh api *merge*)",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/guard-outward.js"],
+            "timeout": 10,
+            "statusMessage": "Checking merge policy…"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/loop-continue.js"],
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/session-state.js"],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

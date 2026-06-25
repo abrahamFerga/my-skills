@@ -129,7 +129,7 @@ cover a service you need.
 
 ## When the target is Azure App Service
 
-The sibling [dotnet-architecture](..//architecture:dotnet-architecture) skill defaults
+The sibling `/architecture:dotnet-architecture` skill defaults
 to **Azure App Service** with **Terraform** for the surrounding infrastructure. Two
 clean ways to combine them:
 

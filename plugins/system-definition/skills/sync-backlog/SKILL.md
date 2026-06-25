@@ -34,7 +34,7 @@ scope — every issue traces back to an epic and capability already written in `
 
 ## Stop Signals
 
-- **No `workflow.json.github` (repo/board not created yet)** → run `/workflow-core:init-system` first (it provisions the repo, labels, and board).
+- **No `workflow.json.github` (repo/board not created yet)** → follow `/workflow-core:init-system` first (it provisions the repo, labels, and board).
 - **Writing or revising the plan itself** → use [`plan-system`](../plan-system/SKILL.md).
 - **`gh` not authenticated / missing `project` scope** → stop and tell the user to run `gh auth login` and `gh auth refresh -s project`; do not partially publish.
 
