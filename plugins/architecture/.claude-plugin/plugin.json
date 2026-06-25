@@ -1,8 +1,7 @@
 {
   "name": "architecture",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "license": "MIT",
-  "category": "architecture",
   "author": { "name": "Abraham Fernandez" },
-  "description": "Stage 2 — decide the SHAPE once, from the GitHub feature backlog: ARCH.md + C4 + ADRs (cloud-agnostic), plus the .NET/Azure solution skeleton + Terraform + GitHub Actions scaffolding. Reads the feature issues, marks them Ready. Enable to define the initial architecture, then disable for the long development phase."
+  "description": "Stage 2 — decide the SHAPE once, from the GitHub feature backlog (via the system-architect agent): ARCH.md + C4 + ADRs (cloud-agnostic), plus the .NET/Azure solution skeleton + Terraform + GitHub Actions scaffolding. Reads the feature issues, marks them Ready. Enable to define the initial architecture, then disable for the long development phase."
 }

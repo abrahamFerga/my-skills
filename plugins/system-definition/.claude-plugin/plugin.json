@@ -1,8 +1,7 @@
 {
   "name": "system-definition",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "license": "MIT",
-  "category": "workflow",
   "author": { "name": "Abraham Fernandez" },
-  "description": "Stage 1 — decide WHAT to build: industry research -> product spec (SPEC.md) -> plan + RBAC (PLAN.md) -> publish the feature backlog as GitHub issues + project board. Enable at project kickoff; disable once the backlog is published so its descriptions stop costing context."
+  "description": "Stage 1 — decide WHAT to build: industry research (via the industry-researcher agent) -> product spec (SPEC.md) -> plan + RBAC (PLAN.md) -> publish the feature backlog as GitHub issues + project board. Enable at project kickoff; disable once the backlog is published so its descriptions stop costing context."
 }

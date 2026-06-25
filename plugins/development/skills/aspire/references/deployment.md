@@ -65,7 +65,7 @@ aspire deploy            # provisions App Service + dependencies, builds, deploy
 Aspire generates the App Service plan, the web app(s), and managed-identity role
 assignments for the Azure resources each service references. If your team already
 manages App Service infrastructure with **Terraform** (see
-[dotnet-architecture](..//architecture:dotnet-architecture)), prefer Terraform for the
+`/architecture:dotnet-architecture`), prefer Terraform for the
 infra and use Aspire only for local orchestration — don't have both `azd` and
 Terraform manage the same resources.
 
@@ -112,7 +112,7 @@ A typical pipeline:
 3. On the protected branch, `aspire deploy` (or `azd deploy`) with credentials from
    OIDC/managed identity — never long-lived secrets.
 
-The [dotnet-architecture](..//architecture:dotnet-architecture) skill ships ready-made
+The `/architecture:dotnet-architecture` skill ships ready-made
 GitHub Actions for the Terraform-owned-infra variant (build → deploy to App Service
 via OIDC). Use those when Terraform owns the infrastructure and Aspire is local-only.
 

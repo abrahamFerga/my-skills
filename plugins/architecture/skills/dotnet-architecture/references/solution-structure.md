@@ -4,7 +4,7 @@ The layer responsibilities, dependency rule, and repo-wide build conventions for
 modular-monolith + Clean Architecture default.
 
 > **The concrete .NET 10 + Aspire backbone is owned by
-> [`dotnet-aspire-base`](..//development:dotnet-aspire-base).** Defer to it for the
+> `/development:dotnet-aspire-base`.** Defer to it for the
 > `dotnet new`/`dotnet sln` steps, the project references, the `ServiceDefaults`
 > wiring, and the AppHost composition. This page adds only the *rationale* (layer
 > responsibilities, CPM, composition root) plus the root build files in
@@ -31,7 +31,7 @@ tests/
 ```
 
 Reference direction (inward only) — the canonical graph owned by
-[`dotnet-aspire-base`](..//development:dotnet-aspire-base):
+`/development:dotnet-aspire-base`:
 
 - `Api → Application, Infrastructure` (plus `Api → ServiceDefaults`)
 - `Infrastructure → Application, Domain`
@@ -43,7 +43,7 @@ Reference direction (inward only) — the canonical graph owned by
 composition root needs the use-case entry points from `Application` and the
 concrete adapters from `Infrastructure` for DI registration.) The generation
 commands live with the backbone owner —
-[`dotnet-aspire-base`](..//development:dotnet-aspire-base) — or, for the standalone
+`/development:dotnet-aspire-base` — or, for the standalone
 scaffold, in [../assets/solution/README.md](../assets/solution/README.md).
 
 ## The four root files
@@ -113,7 +113,7 @@ the actual `Build()` in Api.
 
 ### Aspire — AppHost + ServiceDefaults
 
-See [`/development:aspire`](..//development:aspire). The two Aspire projects are part
+See `/development:aspire`. The two Aspire projects are part
 of this skeleton but owned by the Aspire skill:
 
 - **AppHost** is the local app model — it declares the SQL/cache/etc. resources
@@ -126,7 +126,7 @@ of this skeleton but owned by the Aspire skill:
 
 ### EF Core — Infrastructure persistence
 
-See [`/development:entity-framework-core`](..//development:entity-framework-core).
+See `/development:entity-framework-core`.
 The `DbContext`, entity configurations, migrations, and query patterns live in
 **Infrastructure** (EF Core via the **Npgsql** provider), implementing repository
 ports defined in **Application**. In production the connection string uses

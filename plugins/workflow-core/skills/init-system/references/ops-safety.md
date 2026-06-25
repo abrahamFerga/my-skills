@@ -17,6 +17,7 @@ Top-level fields:
 | `connectors` | no (default `[]`) | string[] | Each entry kebab-case, pattern `^[a-z][a-z0-9-]{0,38}$`, unique within the array. |
 | `capabilities` | no (default `[]`) | object[] | Each `{ "name": <kebab>, "provider"?: <2–64 chars> }`; `name` pattern `^[a-z][a-z0-9-]{0,38}$`. |
 | `github` | no (default absent) | object \| null | The system-of-record on GitHub: repo + backlog board. Absent/`null` means the project is local-only (GitHub not yet wired). Shape below. |
+| `goal` | no (default absent) | object | The autonomous-run policy: objective + how much latitude the agents have + when to stop. Read by the orchestrator and the loop-continuation hook. Shape below. |
 | `skills` | yes | object | `{ "self": Marketplace, "external": ExternalMarketplace[] }`. |
 
 `skills.self` is an invariant — never mutated by any ops skill. It is always:
@@ -58,6 +59,26 @@ When the project is wired to GitHub (the normal case once [`init-system`](../SKI
 | `visibility` | no (default `public`) | One of `public`, `private`. |
 
 No keys beyond these three. The full repo/label/board/issue taxonomy and the `gh` command playbook live in [`github-ops.md`](github-ops.md) — `ops-safety.md` owns only the **shape** of this block; `github-ops.md` owns the **operations**.
+
+### `goal` block
+
+The autonomous-run policy. Absent by default — a project with no `goal` runs in the conservative default posture (the agents pause for every human decision). [`goal`](../../goal/SKILL.md) is the only skill that writes it; the orchestrator (`build-generated-system`) and the loop-continuation hook read it. Shape:
+
+```json
+{
+  "objective": "Build the legal practice-management system end to end.",
+  "autonomy": "confirm",
+  "stop_when": "backlog-drained"
+}
+```
+
+| Field | Required | Rule |
+|---|---|---|
+| `objective` | yes (when block present) | 8–280 chars. Free-text statement of what the run is for. Lets a brand-new build start from the goal alone (no `industry` arg). Secret-scanned like every other string. |
+| `autonomy` | no (default `confirm`) | One of `manual`, `confirm`, `auto`. `manual` = advise only, take no outward action; `confirm` = act but pause before each outward/irreversible action (first push, PR, board move); `auto` = proceed through outward actions without pausing, stopping only at a genuine blocker or `stop_when`. Anything else: refuse. |
+| `stop_when` | no (default `backlog-drained`) | One of `backlog-drained` (stop when every feature is Done), `stage-complete` (stop at the end of the current stage), `never` (run until externally stopped). Anything else: refuse. Bounds the loop-continuation hook so `auto` can't run unbounded. |
+
+No keys beyond these three. `autonomy: auto` is the only setting that lets the loop-continuation hook keep a session going past a natural stop — it is opt-in for exactly that reason, and `stop_when` is its hard ceiling.
 
 ### Marketplace ref format
 
@@ -101,7 +122,9 @@ This is the shared spec the ops skills follow when deriving `.claude/settings.js
 | `architecture` | true | false | true | false |
 | `development` | true | false | false | true |
 
-All four keys use the `@my-skills` suffix (e.g. `system-definition@my-skills`). Changing the `stage` field MUST re-sync these four `enabledPlugins` values per this table.
+All four keys use the `@my-skills` suffix (e.g. `system-definition@my-skills`). `manage-skills` always **generates** exactly this set when it syncs (the active stage's plugins `true`, the others `false`); changing the `stage` field and re-syncing produces this exact map.
+
+**Build-mode superset (validator tolerance).** A reader/validator ([`validate-system`](../../validate-system/SKILL.md)) requires only that the *active stage's* plugins are enabled — `workflow-core` **and** the stage's plugin must be `true`. **Extra** stage plugins being `true` is **allowed** (a non-fatal note), because an orchestrated full build ([`build-generated-system`](../../build-generated-system/SKILL.md)) keeps all four enabled so every phase's agent stays reachable without a mid-loop `/reload-plugins`. So: a *missing* required plugin (or `workflow-core` disabled) is a failure; an *extra* enabled stage plugin is not. The generator stays exact; only the check tolerates the superset.
 
 ## Secret-pattern detection table
 

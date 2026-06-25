@@ -34,8 +34,10 @@ gh auth refresh -s project    # lets the workflow create the backlog board
 ```
 
 That's it. `the-lawyer` is the project name (must start with `the-`); `legal` is the
-industry. Claude then walks the entire pipeline, pausing only when it needs a decision
-from you:
+industry. (Resuming later? Just `cd` into the project and run
+`/workflow-core:build-generated-system` with **no arguments** — it reads `workflow.json`
+and the board, figures out which phase is next, and continues.) Claude then walks the
+entire pipeline, pausing only when it needs a decision from you:
 
 1. Creates a **public GitHub repo** + a **backlog board**.
 2. Researches the industry → writes a product **spec** and **plan**.
@@ -48,36 +50,64 @@ issues, and each feature lands as a reviewable PR that closes its issue.
 
 ---
 
-## Hands-off mode (`/loop`)
+## Hands-off mode
 
-Want Claude to keep going on its own? Use `/loop`.
+Want Claude to keep going on its own? There are two knobs — a **loop** (you drive the
+cadence) and a **goal** (the project drives itself).
 
-**Drive the whole build, self-paced:**
+### Specialized agents do the work
+
+The orchestrator no longer does everything in one context. It **delegates the heavy phases
+to focused subagents** that work in their own window and report back — so the main thread
+stays clean and each agent is autonomous (it reads the project state and figures out the
+answers itself), while light one-time glue (init, spec, plan, publish, validate) runs inline:
+
+| Agent | Plugin | Does |
+|-------|--------|------|
+| `industry-researcher` | system-definition | Research the market → `research/<industry>.md`. |
+| `system-architect` | architecture | Backlog → `ARCH.md` + C4 + ADRs; mark features Ready. |
+| `feature-builder` | development | Implement one Ready issue's scope, green (build + test). |
+| `runtime-verifier` | development | Boot it, exercise it, read telemetry — prove it actually works. |
+| `backlog-manager` | workflow-core | Select the next issue, branch, commit, open the `Closes #N` PR, move the board. |
+
+The development loop is exactly the cycle you'd run by hand:
+**backlog-manager picks → feature-builder builds → runtime-verifier proves → backlog-manager lands the PR.**
+
+### `/loop` — you set the cadence
 
 ```text
-/loop /workflow-core:build-generated-system the-lawyer legal
+/loop /workflow-core:build-generated-system        # drive the whole build, self-paced (no args — it resumes)
+/loop /development:work-next-issue                  # just grind the dev backlog, one feature/PR per pass
 ```
 
-Claude advances through the phases on its own, re-checking what's done and continuing —
-it only stops to ask you the unavoidable decisions (e.g. answering the research
-questions, picking a cloud).
-
-**Just grind through the development backlog** (after the architecture stage), one
-feature per pass until the board is empty:
-
-```text
-/loop /development:work-next-issue
-```
-
-Each pass takes the next *Ready* feature, branches, implements it, runs the tests, and
-opens a `Closes #N` PR. For a truly continuous loop, **turn on auto-merge** on the repo
-(or merge PRs as they arrive) so each merged feature frees the next one:
+Claude advances one phase (or one feature) per pass, re-checking what's done. Stop any time
+with `Esc` (or `/loop stop`). For a continuous dev loop, **turn on auto-merge** so each
+merged feature frees the next:
 
 ```bash
 gh repo edit abrahamFerga/the-lawyer --enable-auto-merge
 ```
 
-Stop the loop any time with `Esc` (or `/loop stop`).
+### `/goal` — the project sets its own latitude
+
+Record the objective and **how unattended** the run may be, once, into `workflow.json`:
+
+```text
+/workflow-core:goal "Build the legal practice-management system" --autonomy auto
+```
+
+| Autonomy | What the agents do with outward actions (first push, PRs, board moves, merges) |
+|----------|------------------------------------------------------------------------------|
+| `manual` | produce local artifacts only; report what's ready to do |
+| `confirm` *(default)* | do the work, but pause for a yes before each outward action |
+| `auto` | proceed continuously; stop only at a real blocker or when the backlog is drained |
+
+Under `auto`, a workflow-core **Stop hook** re-drives the build after each pass, so a single
+`/loop /workflow-core:build-generated-system` runs the whole thing end to end and stops itself
+when `stop_when` is reached. Only sessions actively running the build self-continue — ad-hoc work
+you do in the same project is left alone; set autonomy back to `confirm` to take it off unattended
+mode. A **git-safety hook** still blocks force-pushing `main` and merging PRs under
+`manual`/`confirm` — autonomy raises latitude, it never removes the rails.
 
 ---
 
@@ -110,9 +140,10 @@ spec), no repo, no build.
 
 The plugins are **stage-scoped** so each phase loads only the context it needs. The active
 stage is recorded in your project's `workflow.json` and reflected in
-`.claude/settings.json` → `enabledPlugins`. The orchestrator flips stages for you; to do it
-by hand, edit `enabledPlugins` and run `/reload-plugins`, or let
-`/workflow-core:manage-skills sync` derive it from the `stage` field.
+`.claude/settings.json` → `enabledPlugins`. During a full build the orchestrator keeps all four
+enabled (so every phase's agent is reachable) and narrows to the active stage once the build is
+done; to switch stages by hand, edit `enabledPlugins` and run `/reload-plugins`, or let
+`/workflow-core:manage-skills sync` derive the set from the `stage` field.
 
 | Stage | Enable this plugin | What it's for |
 |-------|--------------------|---------------|
@@ -133,12 +164,15 @@ GitHub is optional: if `gh` isn't available the docs are still written locally a
 
 | Skill | Command | What it does |
 |-------|---------|--------------|
-| build-generated-system | `/workflow-core:build-generated-system` | **The one-command orchestrator** for the full pipeline. |
+| build-generated-system | `/workflow-core:build-generated-system` | **The parameterless conductor** for the full pipeline — infers the phase and delegates to agents. |
+| goal | `/workflow-core:goal` | Set the run's objective + autonomy (`manual`/`confirm`/`auto`) + stop condition. |
 | research-only | `/workflow-core:research-only` | Research (+ optional spec), no repo, no build. |
 | init-system | `/workflow-core:init-system` | New system: config + public repo + labels + backlog board. |
 | manage-workflow | `/workflow-core:manage-workflow` | Set stage/cloud, add connectors & capabilities. |
 | manage-skills | `/workflow-core:manage-skills` | Declare external marketplaces; sync settings. |
 | validate-system | `/workflow-core:validate-system` | Schema + secret + sync + GitHub-reachability checks. |
+
+Plus the **backlog-manager** agent (GitHub board/PR ops) and the workflow-core **hooks** (git-safety guard, `auto` loop continuation, session orientation).
 </details>
 
 <details>
@@ -185,10 +219,14 @@ so a plugin only ever exposes its own skills.
 my-skills/
 ├── .claude-plugin/marketplace.json     # one entry per plugin -> ./plugins/<name>
 ├── plugins/
-│   ├── workflow-core/skills/   …       # always on
-│   ├── system-definition/skills/  …    # stage 1
-│   ├── architecture/skills/  …         # stage 2
-│   └── development/skills/  …          # stage 3
+│   ├── workflow-core/                  # always on
+│   │   ├── skills/  …                  #   build-generated-system, goal, init/manage/validate
+│   │   ├── agents/backlog-manager.md   #   the GitHub board/PR worker
+│   │   ├── hooks/hooks.json            #   git-safety + auto-loop + session-state
+│   │   └── scripts/  …                 #   node hook scripts (no jq dependency)
+│   ├── system-definition/{skills,agents}/  …   # stage 1 (+ industry-researcher)
+│   ├── architecture/{skills,agents}/  …        # stage 2 (+ system-architect)
+│   └── development/{skills,agents}/  …          # stage 3 (+ feature-builder, runtime-verifier)
 ├── AUTHORING.md   LICENSE   NOTICES.md   README.md
 ```
 

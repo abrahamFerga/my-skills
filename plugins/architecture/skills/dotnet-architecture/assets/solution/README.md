@@ -81,12 +81,12 @@ attributes the templates put on `<PackageReference>` items and add the versions 
 
 ## Pairs with the sibling skills
 
-- **AppHost + ServiceDefaults** are owned by the [`aspire`](../..//development:aspire)
+- **AppHost + ServiceDefaults** are owned by the `/development:aspire`
   skill — local orchestration, service discovery, the dashboard, and the shared
   telemetry/health/resilience defaults `Api` consumes via `AddServiceDefaults()`.
 - **Infrastructure persistence** (the `DbContext`, configurations, migrations,
   query patterns) is owned by the
-  [`entity-framework-core`](../..//development:entity-framework-core) skill.
+  `/development:entity-framework-core` skill.
 
 This skill (`dotnet-architecture`) owns the *shape* — the layering decision, the
 project boundaries, the Azure target, and the IaC/CI-CD that ships it.

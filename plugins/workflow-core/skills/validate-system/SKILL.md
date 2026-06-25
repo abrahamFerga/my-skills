@@ -27,7 +27,7 @@ The "is this system in a good state?" skill. Reads both `workflow.json` and `.cl
 
 This is an audit skill, so the stance is adversarial: start by asking "what would make this fail?", not "does this look fine?" Give no benefit of the doubt — if something can't be proven, it's flagged.
 
-- **Schema is law, settings sync is law.** Drift between `workflow.json` and its format, or between `.claude/settings.json` and what `manage-skills` would generate, is a failure — not a warning.
+- **Schema is law, settings sync is law.** Drift between `workflow.json` and its format is a failure. For settings sync, a *missing* required stage plugin (or a wrong marketplace/external entry) is a failure; an *extra* stage plugin enabled is the tolerated build-mode superset (a note), not a failure.
 - **Secrets in writing is a critical failure.** Any pattern match in `workflow.json` blocks, no exceptions.
 - **Read-only by default.** This skill validates; it never modifies `workflow.json` or `.claude/settings.json`.
 - **Concrete remediation, not vague advice.** Don't say "fix the schema errors"; say exactly which field has which disallowed value and what the allowed set is.
@@ -65,7 +65,7 @@ The authoritative `workflow.json` shape this skill validates against — field-b
 
 - The `stage` field must be a valid enum — one of `system-definition`, `architecture`, `development`.
 - `skills.self` must match the invariant exactly: `marketplace` = `my-skills`, `repo` = `abrahamFerga/my-skills`, `plugins` = the four stage plugins `workflow-core`, `system-definition`, `architecture`, `development`. Any drift is a failure.
-- `.claude/settings.json` `enabledPlugins` must match the `stage` per the stage -> enabledPlugins mapping (a mismatch is a finding).
+- `.claude/settings.json` `enabledPlugins` must enable the `stage`'s **required** plugins (`workflow-core` + the active stage's plugin); **extra** stage plugins enabled is tolerated (the build-mode superset), a **missing** required one is a finding — see the stage -> enabledPlugins mapping.
 
 ## Checks (run in order, stop on the first that fails)
 
@@ -74,7 +74,7 @@ The authoritative `workflow.json` shape this skill validates against — field-b
    - **`stage` is a valid enum** — `system-definition`, `architecture`, or `development`. Any other value (or a non-string) is a finding.
    - **`skills.self` matches the invariant** — `marketplace` = `my-skills`, `repo` = `abrahamFerga/my-skills`, `plugins` = `["workflow-core", "system-definition", "architecture", "development"]`. Any drift is a finding.
 3. **`clean no secret patterns in workflow.json`** — scan every string value for the secret patterns in [`../init-system/references/ops-safety.md`](../init-system/references/ops-safety.md). On miss: print the *names* of the pattern types that matched (NEVER the matched values themselves — that defeats the purpose).
-4. **`synced .claude/settings.json matches workflow.json`** — derive what `extraKnownMarketplaces` + `enabledPlugins` should be from `workflow.json` (the `skills` block AND the `stage` field), then compare deeply to the values in the existing `.claude/settings.json` (preserving other keys). The four self stage plugins (`<plugin>@my-skills`) must have the `true`/`false` values dictated by the `stage` per the stage -> enabledPlugins mapping in [`../init-system/references/ops-safety.md`](../init-system/references/ops-safety.md) — a `settings.json` that enables the wrong stage plugin for the current `stage` is a finding. On miss: print which keys are out of sync and suggest invoking [`manage-skills`](../manage-skills/SKILL.md) with `sync` to fix.
+4. **`synced .claude/settings.json matches workflow.json`** — verify `extraKnownMarketplaces` + the external plugins derived from `workflow.json.skills`, and that the `stage`'s **required** self plugins are enabled: `workflow-core@my-skills` **and** the active stage's plugin must be `true`. Per the stage -> enabledPlugins mapping in [`../init-system/references/ops-safety.md`](../init-system/references/ops-safety.md), a **missing** required plugin (or a wrong `extraKnownMarketplaces`/external entry) is a finding; **extra** stage plugins enabled is the tolerated build-mode superset (`build-generated-system` keeps all four on during a run) — note it, don't fail it. On miss: print which required keys are out of sync and suggest invoking [`manage-skills`](../manage-skills/SKILL.md) with `sync` to fix.
 5. *(Optional, when supported)* **`connectors present`** — for each connector in `workflow.json.connectors`, verify the corresponding `Infrastructure.<Connector>/` project exists in the solution. Skip if `build-system` hasn't run yet.
 6. **`github`** — *non-fatal*. If `github` is absent or `null`, report `local-only` and move on (a project can be deliberately local). If present, validate its shape against the `github` block in [`../init-system/references/ops-safety.md`](../init-system/references/ops-safety.md) (a shape violation — e.g. `repo` whose `name` segment ≠ top-level `name`, or a non-integer `project` — **is** a failure). Then, only when `gh` is authenticated, confirm the repo resolves (`gh repo view <repo>`) and the board exists (`gh project view <project> --owner @me`); a missing remote is a **warning** (the config points at something that isn't there), not a hard failure — `gh` may be offline or run in a context without the `project` scope. Never block a local validation on network/auth state.
 
@@ -85,7 +85,7 @@ The authoritative `workflow.json` shape this skill validates against — field-b
 3. **Format output consistently** — two columns: status word + check description.
 4. **For the schema check**, walk every error and print as `<path>: <keyword>: <message>` so the user can pinpoint where the file is wrong. Give concrete remediation (e.g. "the `cloud` field is `gcp`, which is not in the allowed set [`azure`, `aws`, `none`] — set it to one of those or remove the field").
 5. **For the secret check**, print pattern names only — never matched substrings.
-6. **For the sync check**, compute the expected `.claude/settings.json` keys from `workflow.json` — the `skills` block for external plugins, plus the four self stage-plugin keys whose `true`/`false` values come from the `stage` field per the stage -> enabledPlugins mapping — and diff against the actual file. Suggest the corrective skill invocation.
+6. **For the sync check**, verify `extraKnownMarketplaces` + the external plugins match `workflow.json.skills`, and that the `stage`'s required self plugins (`workflow-core` + the stage plugin) are enabled. Treat extra stage plugins enabled as the build-mode superset (a note, not a failure); a missing required plugin or a wrong marketplace/external entry is a finding. Suggest `manage-skills sync` to fix.
 7. **Run an adversarial pass before declaring OK.** Re-read the system as if seeing it for the first time and look for: internal inconsistencies (e.g. `skills.external` references a marketplace that `settings.json` doesn't enable), optimistic counts, and out-of-date references. Fix nothing — surface every finding in the report.
 8. **Exit cleanly with `OK`** only if every check (and the adversarial pass) passed.
 
@@ -106,7 +106,7 @@ The skill's own output IS the validation report. Every check labeled `OK` or `FA
 
 - Continuing to later checks after the first failure — stop at the first to keep the output focused.
 - Printing matched secret substrings in the report — emit pattern names only.
-- Treating a settings-sync drift as a warning — it's a failure; suggest `manage-skills sync`.
+- Treating a *missing required* settings-sync plugin as a warning — that's a failure; suggest `manage-skills sync`. (Failing on an *extra* enabled stage plugin is the opposite error — that's the tolerated build-mode superset.)
 
 ## Related skills
 

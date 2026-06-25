@@ -1,8 +1,7 @@
 {
   "name": "development",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "license": "MIT",
-  "category": "development",
   "author": { "name": "Abraham Fernandez" },
-  "description": "Stage 3 — continuous .NET 10 development, driven by the GitHub backlog one issue at a time. Aspire, EF Core 10, and Microsoft Agent Framework references that Claude reaches for automatically while coding, plus the Aspire solution backbone, pluggable-connector pattern, the issue-driven build engine, the work-next-issue loop, and the runtime verify loop. The default coding-stage plugin."
+  "description": "Stage 3 — continuous .NET 10 development, driven by the GitHub backlog one issue at a time. Aspire, EF Core 10, and Microsoft Agent Framework references Claude reaches for automatically while coding, plus the Aspire backbone, pluggable-connector pattern, the issue-driven build engine, and the work-next-issue loop that orchestrates the feature-builder and runtime-verifier agents (build → prove → PR). The default coding-stage plugin."
 }

@@ -41,7 +41,7 @@ Note the post-provision step: the UAMI must be granted a PostgreSQL role mapped 
 its Entra identity. To switch to Azure SQL instead, replace the
 `azurerm_postgresql_flexible_server*` resources with `azurerm_mssql_server` +
 `..._database` (Entra-only) and update the connection string accordingly. Data
-modeling lives in the [`entity-framework-core`](..//development:entity-framework-core)
+modeling lives in the `/development:entity-framework-core`
 skill (Npgsql provider).
 
 ## Supporting services

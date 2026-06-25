@@ -1,27 +1,34 @@
 ---
 name: work-next-issue
 description: >
-  Drive Stage 3 off the GitHub backlog, one issue at a time. Pick the highest-priority Ready
-  feature from the project board (Foundations first by Build order), move it to In Progress,
-  branch, implement it with build-system, run build/test/validate, then open a PR that closes
-  the issue and move the card to In Review. The development loop that turns the architected
-  backlog into merged PRs without ever holding more than one feature in flight.
-  USE FOR: implementing the next feature off the board; running the per-issue branch -> code ->
-  PR loop; resuming development after a PR merges.
-  DO NOT USE FOR: generating the code itself (that engine is ../build-system/SKILL.md, which this
-  calls); designing architecture or moving Backlog -> Ready (use /architecture:design-architecture);
-  publishing the backlog (use /system-definition:sync-backlog).
+  Drive Stage 3 off the GitHub backlog, one issue at a time, by orchestrating three subagents:
+  backlog-manager selects the highest-priority Ready feature and branches, feature-builder
+  implements its scope, runtime-verifier proves it works end to end, and backlog-manager lands it as
+  a Closes #N PR and moves the board. Never holds more than one feature in flight. USE FOR:
+  implementing the next feature off the board; running the per-issue select → build → verify → PR
+  loop; resuming development after a PR merges. DO NOT USE FOR: generating the code yourself (the
+  feature-builder agent does that); designing architecture or moving Backlog → Ready (use
+  /architecture:design-architecture); publishing the backlog (use /system-definition:sync-backlog).
 license: MIT
 disable-model-invocation: true
 ---
 
 # work-next-issue
 
-The Stage-3 loop. The backlog board is the worklist; this skill takes the next **Ready** feature,
-implements it on its own branch via [`build-system`](../build-system/SKILL.md), and lands it as a
-PR that closes the issue — then stops, one feature in flight at a time. Re-invoke (or run on a
-loop) to take the next one. It owns *selection, branching, the PR, and the board*; it delegates
-*code generation* to `build-system` and *runtime proof* to [`verify-runtime`](../verify-runtime/SKILL.md).
+The Stage-3 loop body. It is a **conductor**, not a worker: it takes the next **Ready** feature and
+moves it through four hand-offs to three specialized subagents, landing it as a PR that closes the
+issue — then stops, one feature in flight. Re-invoke (or run under `/loop`, or let
+`build-generated-system` drive it) to take the next one.
+
+```
+backlog-manager(select+claim) → feature-builder(implement) → runtime-verifier(prove) → backlog-manager(land)
+        pick + branch                generate code               run + observe              commit + PR + board
+```
+
+Each subagent works in its **own context** and reads the project state itself; the conductor just
+sequences them, gates on each result, and enforces the autonomy policy. The agents share the one
+working tree on the feature branch, so the builder's code is what the verifier runs and the
+backlog-manager commits.
 
 ## When to Use
 
@@ -33,91 +40,79 @@ loop) to take the next one. It owns *selection, branching, the PR, and the board
 
 - **No `workflow.json.github` / empty board** → the backlog isn't published; use `/system-definition:sync-backlog`.
 - **Nothing in Ready** → architecture hasn't marked features Ready; use `/architecture:design-architecture`.
-- **Generating code or scaffolding** → that's [`build-system`](../build-system/SKILL.md); this skill calls it.
 - **Working tree dirty / mid-merge** → stop; never start a new feature on top of uncommitted work.
+- **You're about to write code or run gh yourself** → don't; that's the agents' job. This skill only sequences them.
 
 ## Inputs
 
 | Input | Required | Description |
 |---|---|---|
-| `workflow.json` | Yes | The `github` block (`repo`, `project`) — the repo and board to drive. |
+| `workflow.json` | Yes | The `github` block (repo, board) and `goal.autonomy` (latitude for the land step). |
 | Project board | Yes | Source of the next item: the `Ready` column, ordered by `Build order` then `priority`. |
-| `ARCH.md` / `PLAN.md` / `SPEC.md` | Yes | Passed through to `build-system` as the design context for the selected feature. |
+| `ARCH.md` / `PLAN.md` / `SPEC.md` | Yes | The design context each agent reads for the selected feature. |
+
+## Autonomy
+
+Read `goal.autonomy` (default `confirm`). It governs the **land** step's outward actions (first push,
+PR, board move): `manual` → stop after verify and report the branch as ready-to-land; `confirm` →
+pause for a yes before the first push of the project and before the PR; `auto` → land without
+pausing. The workflow-core git-safety hook still blocks force-pushing the default branch and merging
+under `manual`/`confirm`.
 
 ## Workflow (one issue per run)
 
-1. **Preflight.** Confirm `gh auth status` (with `project` scope) and a **clean working tree** on
-   the default branch (`git status --porcelain` empty; not mid-merge/rebase). Read `workflow.json.github`
-   for `REPO` and `PROJECT`. If the repo has no solution yet, the selected work is the **Foundations
-   bootstrap** (see step 3).
-2. **Select the next issue.** From the board, take the `Ready` feature with the lowest `Build order`
-   (ties broken by `priority` p0>p1>p2). Foundations features sort first because `sync-backlog` gave
-   them the lowest build orders. If `Ready` is empty, stop with the design-architecture pointer.
-3. **Claim it.** Move the card `Ready → In Progress`. Create a branch `feat/<issue#>-<slug>` off the
-   default branch. (First run with no solution: do the Foundations bootstrap via `build-system`,
-   which satisfies the whole Foundations epic; close/advance those Foundations issues together.)
-4. **Implement.** Invoke [`build-system`](../build-system/SKILL.md) with the selected issue as scope
-   (title, body, acceptance criteria, and the Stage-2 architecture comment). It generates only this
-   feature's entities/handlers/endpoints/migrations/tests/UI with cross-cutting concerns wired in.
-5. **Prove it.** Run `dotnet build` + `dotnet test` + `/workflow-core:validate-system`; use
-   [`verify-runtime`](../verify-runtime/SKILL.md) to exercise it at runtime when the feature has a
-   reachable surface. Every acceptance criterion in the issue must hold. Stop on red — fix before the PR.
-6. **Land it.** Commit (message referencing the issue), push the branch, and open a PR with
-   `Closes #<issue#>` in the body. Move the card `In Progress → In Review`.
-7. **Report and stop.** Print the issue, branch, PR url, and checks status. Do **not** start the next
-   issue — one feature in flight. (When run under `/loop`, the next invocation picks up after this
-   PR merges and the board auto-archives the card.)
-
-## gh / git commands (inlined; self-contained)
-
-```bash
-OWNER=abrahamFerga; REPO=$OWNER/<name>; PROJECT=<n>
-PID=$(gh project view "$PROJECT" --owner @me --format json --jq '.id')
-gh project field-list "$PROJECT" --owner @me --format json   # -> Pipeline field id + option ids
-
-# next Ready feature, lowest Build order (inspect item-list JSON; fields carry Pipeline + Build order)
-gh project item-list "$PROJECT" --owner @me --format json
-
-# claim: Ready -> In Progress
-gh project item-edit --id <item-id> --project-id "$PID" --field-id <pipeline-fid> --single-select-option-id <in-progress-oid>
-
-# branch, implement (build-system), verify, then:
-git switch -c feat/<issue#>-<slug>
-git add -A && git commit -m "feat: <title> (#<issue#>)"
-git push -u origin feat/<issue#>-<slug>
-gh pr create -R "$REPO" --fill --body "Closes #<issue#>"
-
-# In Progress -> In Review
-gh project item-edit --id <item-id> --project-id "$PID" --field-id <pipeline-fid> --single-select-option-id <in-review-oid>
-```
-
-On merge, `Closes #<n>` closes the issue and the board's built-in *closed → Done* workflow archives
-the card. If that automation is off, move it explicitly to the `Done` option.
+1. **Preflight.** Confirm a **clean working tree** on the default branch (`git status --porcelain`
+   empty; not mid-merge/rebase) and `gh auth status` with the `project` scope. On a dirty tree, stop
+   and surface it — never start on top of uncommitted work.
+2. **Select + claim.** Spawn the **backlog-manager** subagent (Agent tool, `subagent_type:
+   backlog-manager`) with job `select` then `claim`: pick the lowest-`Build order` Ready feature
+   (Foundations first; ties by priority p0>p1>p2), move it `Ready → In Progress`, and branch
+   `feat/<issue#>-<slug>` off a clean default branch. It returns the issue (number, title, slug,
+   acceptance criteria, architecture note) and the branch. If it reports `drained`, stop with the
+   design-architecture pointer. **First run on an empty repo:** the unit is the *Foundations
+   bootstrap* on branch `feat/foundations`.
+3. **Implement.** Spawn the **feature-builder** subagent with the selected issue as scope (title,
+   body, acceptance criteria, architecture comment — or "Foundations bootstrap"). It generates only
+   that unit's code with cross-cutting concerns wired in and stops green (build + test + validate).
+   It returns the green/red status and which acceptance criteria it believes are met.
+4. **Prove.** Spawn the **runtime-verifier** subagent with the issue's acceptance criteria. It boots
+   the system, exercises the real surface, reads telemetry, and returns `verified` or `failed` with
+   evidence. **If the builder was red or the verifier failed:** hand the concrete failure back to a
+   fresh **feature-builder** to fix, then re-verify. After **two** failed build→verify cycles on the
+   same issue, stop and surface the conflict (architecture or a skill is wrong) — do not loop.
+5. **Land.** Per the autonomy policy, spawn the **backlog-manager** subagent with job `land`: commit
+   the working tree, push the branch, open a PR with `Closes #<issue#>`, and move the card
+   `In Progress → In Review`. It secret-scans the diff and PR body first.
+6. **Report and stop.** Print the issue, branch, PR url, the verifier's verdict, and checks status.
+   Do **not** start the next issue — one feature in flight. (Under `/loop` or `auto`, the next pass
+   picks up after this PR merges and the board auto-archives the card.)
 
 ## Guardrails
 
-- **One feature in flight.** Never branch a second feature before the current PR is open. Keeps every
-  change reviewable and the board honest.
-- **Clean base only.** Refuse to start on a dirty tree or detached/mid-merge state — surface it instead.
-- **Green before PR.** No PR until `build` + `test` + `validate-system` pass and the issue's acceptance
-  criteria are met. A red branch is not "In Review."
-- **Scope discipline.** Implement only the selected issue. If the work reveals missing scope, file/adjust
-  an issue (or send it back to `sync-backlog`) rather than silently widening the PR.
-- **Outward actions are visible.** Pushing a branch and opening a PR are public on a public repo —
-  proceed when the user is driving the loop, but never force-push the default branch or merge without review.
-- **No secrets in commits/PRs.** The secret scan applies to committed files and PR bodies alike.
+- **Conductor, not worker.** You spawn agents and gate on results; you do not write code, run the
+  build, or call `gh`/`git` yourself. If you're reaching for Edit or a `gh` command, delegate instead.
+- **One feature in flight.** Never let backlog-manager claim a second feature before the current PR
+  is open. Keeps every change reviewable and the board honest.
+- **Green before land.** No PR until feature-builder is green **and** runtime-verifier returns
+  `verified` against the issue's acceptance criteria. A red branch is not "In Review."
+- **Two-cycle cap.** Two failed build→verify cycles on one issue → stop and surface. Don't grind.
+- **Scope discipline.** Implement only the selected issue. Missing scope → file/adjust an issue (or
+  send it back to `sync-backlog`), don't silently widen the PR.
+- **Outward actions respect autonomy.** The land step obeys `goal.autonomy`; force-pushing the
+  default branch and merging without review are blocked by the workflow-core hook regardless.
 
 ## Common Pitfalls
 
-- **Starting the next issue automatically** — stop after each PR; the loop resumes on the next invocation.
-- **Forgetting `Closes #N`** — without it the issue stays open and the card never reaches Done.
-- **Leaving the card in In Progress** after opening the PR — always advance to In Review.
-- **Selecting by creation order instead of `Build order`** — Foundations and priority ordering live in the board field, not the issue number.
+- **Doing the agents' work inline** — the point is context isolation; sequence the agents, don't
+  inline build/verify/gh into the conductor's context.
+- **Starting the next issue automatically** — stop after each PR; the loop resumes on the next pass.
+- **Landing on a builder-green-but-verifier-failed branch** — runtime proof gates the PR, not just compilation.
+- **Selecting by issue number instead of `Build order`** — Foundations and priority ordering live in the board field.
 
 ## Related skills
 
-- [`build-system`](../build-system/SKILL.md) — the code-generation engine this loop calls per issue. **Load when:** implementing the selected feature.
-- [`verify-runtime`](../verify-runtime/SKILL.md) — runtime exercise/debug loop used to prove a feature before the PR. **Load when:** the feature has a reachable surface.
-- `/workflow-core:validate-system` — the guardrail check run before every PR.
+- **feature-builder** / **runtime-verifier** (development agents) and **backlog-manager** (workflow-core agent) — the three workers this skill sequences. Spawn via the Agent tool.
+- [`build-system`](../build-system/SKILL.md) — the code-generation engine the feature-builder agent runs. **Load when:** you need to understand or change what the builder generates.
+- [`verify-runtime`](../verify-runtime/SKILL.md) — the run/observe loop the runtime-verifier agent runs. **Load when:** changing how features are proven.
 - `/architecture:design-architecture` — fills the `Ready` column this loop drains. **Load when:** Ready is empty.
 - `/system-definition:sync-backlog` — publishes the backlog this loop consumes. **Load when:** the board is empty.

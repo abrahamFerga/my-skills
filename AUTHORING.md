@@ -17,12 +17,22 @@ plugins/<plugin>/skills/<kebab-name>/
 └── assets/           # optional — copy-ready template files (Terraform, YAML, project skeletons)
 ```
 
-Each plugin is a **self-contained directory** with its own
-`.claude-plugin/plugin.json` and `skills/` tree. The `.claude-plugin/marketplace.json`
-catalog has one entry per plugin whose `source` points at `./plugins/<plugin>`. A
-plugin auto-discovers every skill under its own `skills/` — there is **no `skills`
-array to maintain**, and because each plugin has a distinct source root, plugins never
-expose each other's skills. Stage plugins:
+Each plugin is a **self-contained directory** with its own `.claude-plugin/plugin.json`
+and any of these component dirs at its **root** (never inside `.claude-plugin/`):
+
+```text
+plugins/<plugin>/
+├── .claude-plugin/plugin.json   # manifest (only this lives in .claude-plugin/)
+├── skills/<kebab-name>/SKILL.md  # skills (auto-discovered)
+├── agents/<kebab-name>.md        # subagents (auto-discovered)
+├── hooks/hooks.json              # lifecycle hooks
+└── scripts/<name>.js             # hook/utility scripts (node — no jq dependency)
+```
+
+The `.claude-plugin/marketplace.json` catalog has one entry per plugin whose `source`
+points at `./plugins/<plugin>`. A plugin auto-discovers every skill under `skills/` and
+every agent under `agents/` — there is **no array to maintain** — and because each plugin
+has a distinct source root, plugins never expose each other's skills. Stage plugins:
 
 | Plugin | Stage | Default |
 |--------|-------|---------|
@@ -110,6 +120,91 @@ disable-model-invocation: true   # OPTIONAL — see "Invocation" below
 When a skill produces files (IaC, CI/CD, project skeletons), ship valid,
 parameterized template files under `assets/` and explain them in a `references/*.md`.
 
+## Authoring an agent (subagent)
+
+An agent is a **worker that runs in its own context window** and returns a summary —
+use one when a phase is heavy (would flood the main thread with logs/searches/file
+dumps) or specialized enough to deserve its own restricted toolset and model tier. A
+*skill* is shared procedure/knowledge loaded into the current context; an *agent* is a
+delegate. In this repo the orchestrator delegates the heavy/repeated phases (research,
+architecture, per-feature build/verify, GitHub ops) to agents and runs the light
+one-time glue (init, spec, plan, publish, validate) inline.
+
+An agent is a single markdown file at `plugins/<plugin>/agents/<kebab-name>.md`:
+
+```yaml
+---
+name: feature-builder          # required — kebab; how it's spawned (subagent_type)
+description: >                  # required — "when to delegate"; ALWAYS-ON context when the
+  Implements one Ready issue's scope … (sharp, like a model-invokable skill description)
+tools: Read, Edit, Bash        # optional allowlist (drops MCP unless listed); OR…
+disallowedTools: Edit, Write   # …optional denylist (keeps MCP/browser; great for read/run-only)
+model: sonnet                  # optional — omit to inherit; set a cheaper tier for mechanical work
+skills: [aspire]               # optional — preload a MODEL-INVOKABLE skill's content (NOT a disable-model-invocation engine)
+---
+
+You are <role>. When invoked: 1)… 2)… Guardrails (hard): … Return value: your final
+message IS the result — return structured data, not a chat reply.
+```
+
+Rules specific to **plugin** agents:
+
+- **`hooks`, `mcpServers`, and `permissionMode` are ignored** for plugin-shipped agents
+  (they work only for user/project agents). Don't rely on them here.
+- **A subagent cannot reach this repo's engine skills — make it self-contained.** A subagent
+  has no "active skill base dir", so it can't `Read` another skill's file by relative path; and
+  `skills:` preload **only works for model-invokable skills** — you *cannot* preload a
+  `disable-model-invocation` skill (Claude Code skips it and logs a warning), nor can a subagent
+  invoke one via the Skill tool. Since every orchestration engine here (`build-system`,
+  `verify-runtime`, `design-architecture`, …) is `disable-model-invocation`, an agent must **carry
+  its own procedure + the essential guardrails in its body** and lean on (a) the project's own
+  artifacts (`ARCH.md`/`PLAN.md`/`SPEC.md`, the committed `.http` catalog) and (b) the
+  **model-invokable** reference skills (`aspire`, `entity-framework-core`, `agent-framework-csharp`,
+  `dotnet-architecture`) via the Skill tool. Use `skills:` preload only to inject a *model-invokable*
+  helper. Name the canonical `/plugin:skill` in the body so a human can run the full-fidelity version.
+- **Tool scope tightly.** Use `disallowedTools: Edit, Write, NotebookEdit` when the agent
+  must keep MCP/browser tools but not mutate code (`runtime-verifier`); use a `tools` allowlist
+  when it needs only a few named tools (`industry-researcher`'s web+write set, `backlog-manager`'s
+  `Bash, Read, Grep, Glob`). A denylist keeps inherited MCP; an allowlist drops it.
+- **Model-tier for cost.** Omit `model` (inherit) for heavy reasoning; set `sonnet`/`haiku`
+  for mechanical work (gh/git, board moves). Tune further with `effort` (low/medium/high/xhigh/max)
+  and `maxTurns`.
+- **Other supported plugin-agent fields** (none needed by the shipped agents): `memory`
+  (`user`/`project`/`local` — cross-session learning), `background: true` (always run as a
+  background task), `isolation: worktree` (run in a throwaway git worktree — use when parallel
+  agents would otherwise clash on the same files), `color`, and `initialPrompt`.
+- **Same cross-plugin rule as skills.** Reference another plugin's skill by `/plugin:skill`
+  or by `skills:` name — never by file path.
+- The `description` is always-on context whenever the plugin is enabled (it's how the model
+  decides to delegate). Keep it as tight as a model-invokable skill description.
+
+## Authoring a hook
+
+Hooks live in `plugins/<plugin>/hooks/hooks.json` and react to lifecycle events. This repo
+ships three on the always-on `workflow-core` plugin: a **PreToolUse** git-safety guard, a
+**Stop** auto-loop continuation (opt-in), and a **SessionStart** orienter.
+
+- **Gate with `if` so always-on hooks stay cheap.** A PreToolUse hook with
+  `"if": "Bash(git push *)"` only spawns its script for matching commands — zero cost on
+  every other Bash call.
+- **Scripts are node, in `scripts/`, invoked via exec form** so paths with spaces and
+  cross-platform shells just work:
+  `{"type":"command","command":"node","args":["${CLAUDE_PLUGIN_ROOT}/scripts/guard.js"]}`.
+  Node (not `jq`/`sh`) because every generated system already has it and it parses JSON
+  natively. Use `${CLAUDE_PLUGIN_ROOT}` for plugin files, `${CLAUDE_PROJECT_DIR}` for project files.
+- **A script reads JSON on stdin and writes a decision on stdout, exit 0.** PreToolUse
+  deny → `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"…"}}`;
+  Stop re-drive → top-level `{"decision":"block","reason":"…"}`; SessionStart inject →
+  `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"…"}}`.
+- **Fail open and no-op off-target.** Every script here exits 0 silently when there's no
+  `workflow.json` (so it's invisible in this repo and any non-generated project) and on any
+  internal error — a buggy guard must never brick a session.
+- **Make anything aggressive opt-in and bounded.** The auto-loop only fires under
+  `goal.autonomy === "auto"` and trips a git-HEAD circuit breaker after N stalled iterations.
+- **Test by piping sample input:** `echo '{"cwd":"…","tool_input":{"command":"git push --force"}}' | node scripts/guard.js`.
+- Editing a `SKILL.md` is live; editing `hooks/`, `agents/`, `.mcp.json`, or scripts needs
+  `/reload-plugins` (or a restart) to take effect.
+
 ## Checklist — adding a new skill
 
 1. `mkdir plugins/<plugin>/skills/<name>/` (+ `references/`, `assets/` as needed),
@@ -124,3 +219,15 @@ parameterized template files under `assets/` and explain them in a `references/*
 6. Add upstream attribution to `NOTICES.md` if you adapted anything.
 7. Lint: `npx markdownlint-cli2 "plugins/<plugin>/skills/<name>/**/*.md"`. Validate
    the marketplace with `claude plugin validate .` if available.
+
+## Checklist — adding an agent or hook
+
+1. **Agent:** create `plugins/<plugin>/agents/<name>.md` with `name` + `description` (required)
+   and a focused system-prompt body (When invoked / Guardrails / Return value). Scope `tools`/
+   `disallowedTools`, pick a `model` tier, and `skills:`-preload the engine it runs.
+2. **Hook:** add the event to `plugins/<plugin>/hooks/hooks.json`, gate it with `if`, and put the
+   script in `plugins/<plugin>/scripts/<name>.js` (node, fail-open, no-op without `workflow.json`).
+3. **Bump the plugin `version`** in `.claude-plugin/plugin.json` — agents/hooks/scripts are cached;
+   a version bump forces the install to pick them up (and `/reload-plugins` in a live session).
+4. **Test the script** by piping sample stdin JSON (see *Authoring a hook*). Add a README row.
+5. Validate: `claude plugin validate .` (checks agent frontmatter + `hooks.json`), then markdownlint.
