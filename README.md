@@ -157,7 +157,7 @@ GitHub is optional: if `gh` isn't available the docs are still written locally a
 
 ---
 
-## All the skills
+## All the skills & agents
 
 <details>
 <summary>workflow-core — ops/meta (always on)</summary>
@@ -184,6 +184,8 @@ Plus the **backlog-manager** agent (GitHub board/PR ops) and the workflow-core *
 | synthesize-spec | `/system-definition:synthesize-spec` | Capabilities → product spec (`SPEC.md`). |
 | plan-system | `/system-definition:plan-system` | Spec → epics, modules, RBAC (`PLAN.md`). |
 | sync-backlog | `/system-definition:sync-backlog` | Publish the plan as epic/feature issues on the board. |
+
+Plus the **industry-researcher** agent — autonomous market research → `research/<industry>.md`.
 </details>
 
 <details>
@@ -193,6 +195,8 @@ Plus the **backlog-manager** agent (GitHub board/PR ops) and the workflow-core *
 |-------|---------|--------------|
 | design-architecture | `/architecture:design-architecture` | Backlog → `ARCH.md` + C4 + ADRs; move features to Ready. |
 | dotnet-architecture | `/architecture:dotnet-architecture` | .NET/Azure realization: solution skeleton + Terraform + Actions. |
+
+Plus the **system-architect** agent — autonomously turns the backlog into `ARCH.md` + C4 + ADRs and marks features Ready.
 </details>
 
 <details>
@@ -200,20 +204,23 @@ Plus the **backlog-manager** agent (GitHub board/PR ops) and the workflow-core *
 
 | Skill | Command | What it does |
 |-------|---------|--------------|
-| work-next-issue | `/development:work-next-issue` | **The dev loop:** next Ready issue → branch → build → PR. |
+| work-next-issue | `/development:work-next-issue` | **The dev loop:** sequences the agents — select → build → prove → PR, one feature in flight. |
 | build-system | `/development:build-system` | Code-generation engine (Foundations, then one feature). |
 | verify-runtime | `/development:verify-runtime` | Run → observe → debug → fix loop with real telemetry. |
 | dotnet-aspire-base | `/development:dotnet-aspire-base` | Scaffold the .NET 10 + Aspire backbone. |
 | pluggable-connectors | `/development:pluggable-connectors` | Channel/integration connector pattern. |
 | aspire / entity-framework-core / agent-framework-csharp | auto + `/development:…` | Reference skills Claude uses automatically while coding. |
+
+Plus the **feature-builder** (implements a Ready issue, green) and **runtime-verifier** (boots it and proves it works) agents — the build → prove half of the loop.
 </details>
 
 ---
 
 ## Repository layout
 
-Each plugin is a self-contained directory (its own `.claude-plugin/plugin.json` + `skills/`),
-so a plugin only ever exposes its own skills.
+Each plugin is a self-contained directory (its own `.claude-plugin/plugin.json` + `skills/`,
+plus `agents/`, and — for workflow-core — `hooks/` + `scripts/`), so a plugin only ever
+exposes its own components.
 
 ```text
 my-skills/
